@@ -1,7 +1,7 @@
 from abc import ABC
 from torch.utils.data import Dataset
 
-class SubsetDataset(ABC, Dataset):
+class BaseSubsetDataset(ABC, Dataset):
     def __init__(
         self,
         dataset: Dataset,

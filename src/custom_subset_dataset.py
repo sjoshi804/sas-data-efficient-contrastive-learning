@@ -1,7 +1,7 @@
 from typing import List
 from torch.utils.data import Dataset
 
-from base_subset_dataset import BaseSubsetDataset 
+from base_subset_dataset import BaseSubsetDataset
 
 class CustomSubsetDataset(BaseSubsetDataset):
     def __init__(
