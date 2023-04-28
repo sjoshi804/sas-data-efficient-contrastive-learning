@@ -28,5 +28,4 @@ class CustomSubsetDataset(BaseSubsetDataset):
         self.subset_size = len(subset_indices)
         self.subset_fraction = self.subset_size / len(dataset)
         self.subset_indices = subset_indices
-        if self.verbose: 
-            print("Subset Dataset Ready.")
+        self.initialization_complete()

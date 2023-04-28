@@ -1,6 +1,9 @@
 import random
+
 from torch.utils.data import Dataset
+
 from base_subset_dataset import BaseSubsetDataset
+
 
 class RandomSubsetDataset(BaseSubsetDataset):
     def __init__(
@@ -23,8 +26,7 @@ class RandomSubsetDataset(BaseSubsetDataset):
             verbose=verbose
         )
         self.subset_indices = random.sample(range(self.len_dataset), self.subset_size)
-        if self.verbose: 
-            print("Subset Dataset Ready.")
+        self.initialization_complete()
         
     def __len__(self):
         return self.subset_size

@@ -1,5 +1,7 @@
 from abc import ABC
+
 from torch.utils.data import Dataset
+
 
 class BaseSubsetDataset(ABC, Dataset):
     def __init__(
@@ -23,9 +25,10 @@ class BaseSubsetDataset(ABC, Dataset):
         self.subset_indices = None
         self.verbose = verbose 
 
-        if verbose:
+    def initialization_complete(self):
+        if self.verbose:
             print(f"Subset Size: {self.subset_size}")
-            print(f"Discarding {self.len_dataset - self.subset_size} examples...")
+            print(f"Discarded {self.len_dataset - self.subset_size} examples")
 
     def __len__(self):
         return self.subset_size
