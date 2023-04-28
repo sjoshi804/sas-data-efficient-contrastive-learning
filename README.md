@@ -10,7 +10,7 @@ Paper: https://arxiv.org/abs/2302.09195
 
 Samples shown for choosing subsets of CIFAR100 
 
-## CL-Core 
+## CL-Core (default)
 
 ```python
 # Approximate Latent Classes
@@ -23,6 +23,49 @@ partition = clcore.approximate_latent_classes.clip_approx()
 subset_dataset = 
 ```
 
+## CL-Core (CLIP 0-shot Latent Classes)
+
+
+## CL-Core (k-Means Latent Classes)
+
+
+## Random Subset
+
+## Custom Subset 
+
+# Sample Implementation of Compatible Augmented Dataset (Required for Contrastive Learning)
+
+```python 
+import numpy as np
+import torch
+import torchvision
+from PIL import Image
+
+class CIFAR100Multiaugment(torchvision.datasets.CIFAR100):
+
+    def __init__(self, *args, n_augmentations=8, **kwargs):
+        super(CIFAR10Multiaugment, self).__init__(*args, **kwargs)
+        self.n_augmentations = n_augmentations
+        assert self.transforms is not None
+
+    def __getitem__(self, index):
+        """
+        Args:
+            index (int): Index
+
+        Returns:
+            tuple: (image, target) where target is index of the target class.
+        """
+        img, target = self.data[index], self.targets[index]
+
+        # doing this so that it is consistent with all other datasets
+        # to return a PIL Image
+        pil_img = Image.fromarray(img)
+
+        imgs = [self.transform(pil_img) for _ in range(self.n_augmentations)]
+
+        return imgs
+```
 
 # How to cite?
 
