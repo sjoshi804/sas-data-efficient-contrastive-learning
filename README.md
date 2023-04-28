@@ -6,6 +6,24 @@ Project Page: https://sjoshi804.github.io/data-efficient-contrastive-learning/
 
 Paper: https://arxiv.org/abs/2302.09195
 
+# Sample Usage
+
+Samples shown for choosing subsets of CIFAR100 
+
+## CL-Core 
+
+```python
+# Approximate Latent Classes
+import clcore 
+
+trainset = co
+partition = clcore.approximate_latent_classes.clip_approx()
+
+# Get Subset
+subset_dataset = 
+```
+
+
 # How to cite?
 
 @misc{joshi2023dataefficient,
