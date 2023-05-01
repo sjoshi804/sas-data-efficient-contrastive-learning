@@ -1,6 +1,7 @@
 from abc import ABC
 from typing import Dict, List, Optional
 import math 
+import pickle
 import random 
 
 import numpy as np
@@ -51,6 +52,10 @@ class BaseSubsetDataset(ABC, Dataset):
         original_item = self.dataset[original_index]
         
         return original_item
+    
+    def save_to_file(self, filename):
+        with open(filename, "wb") as f:
+            pickle.dump(self.subset_indices, f)
 
 """
 Random Subset

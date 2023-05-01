@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import sas
+import sas.subset_dataset 
 
 from configs import SupportedDatasets, get_datasets
 from resnet import *
@@ -25,9 +25,9 @@ parser.add_argument("--test-freq", type=int, default=10, help='Frequency to fit 
                                                               'Not appropriate for large datasets. Set 0 to avoid '
                                                               'classifier only training here.')
 parser.add_argument("--checkpoint-freq", type=int, default=10000, help="How often to checkpoint model")
-parser.add_argument('--dataset', type=str, default=str(SupportedDatasets.CIFAR10.value), help='dataset',
+parser.add_argument('--dataset', type=str, default=str(SupportedDatasets.CIFAR100.value), help='dataset',
                     choices=[x.value for x in SupportedDatasets])
-parser.add_argument('--load-subset-indices', type=str, help="Path to subset indices")
+parser.add_argument('--load-subset-indices', type=str, default="cifar100-0.2-sas-subset-indices.pkl", help="Path to subset indices")
 parser.add_argument('--device', type=int, default=-1, help="GPU number to use")
 parser.add_argument('--seed', type=int, default=0, help="Seed for randomness")
 
@@ -40,12 +40,12 @@ np.random.seed(args.seed)
 Random(args.seed)
 
 # Arguments check and initialize global variables
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = 'cuda:7' if torch.cuda.is_available() else 'cpu'
 best_acc = 0  
 start_epoch = 0  
 
 print('==> Preparing data..')
-datasets = get_datasets(args.dataset, imbalance=args.imbalance)
+datasets = get_datasets(args.dataset)
 
 ##############################################################
 # Load Subset Indices
@@ -53,18 +53,18 @@ datasets = get_datasets(args.dataset, imbalance=args.imbalance)
 
 with open(args.load_subset_indices, "rb") as f:
     subset_indices = pickle.load(f)
-trainset = sas.SubsetDataset.CustomSubset(
-    trainset=datasets.trainset,
+trainset = sas.subset_dataset.CustomSubsetDataset(
+    dataset=datasets.trainset,
     subset_indices=subset_indices
 )
-print("subset_size:", len(subset_indices))
+print("subset_size:", len(trainset))
 
 ##############################################################
 # Data Loaders
 ##############################################################
 
 trainloader = torch.utils.data.DataLoader(
-    datasets.trainset, 
+    trainset, 
     batch_size=args.batch_size,
     shuffle=True,
     num_workers=args.num_workers,

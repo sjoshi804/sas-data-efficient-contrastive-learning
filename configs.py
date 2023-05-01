@@ -7,7 +7,7 @@ import torchvision.transforms as transforms
 from collections import namedtuple
 from data_proc.augmentation import ColourDistortion, GaussianBlur
 from data_proc.dataset import *
-from models import *
+from resnet import *
 
 class SupportedDatasets(Enum):
     CIFAR10 = "cifar10"

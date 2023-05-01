@@ -27,12 +27,10 @@ class Trainer():
         :param device: Device to run on (GPU)
         :param net: encoder network
         :param critic: projection head
-        :param sampler: batch sampler (creates batches of specified kind)
         :param trainloader: dataloader for train data (for contrastive learning)
-        :param encoder_optimizer: Optimizer for the encoder network (net)
-        :param warm_up_epochs: Epochs up to which to use warm up batches
-        :param is_scl: Flag to determine where supervised contrastive learning loss should be used
-        :param rare_testloader: Test loader with rare classes upsampled (for imbalance dataset)
+        :param clftrainloader: dataloader for train data (for linear proble)
+        :param optimizer: Optimizer for the encoder network (net)
+        :param lr_scheduler: learning rate scheduler
         """
         self.device = device
         self.net = net 
@@ -75,11 +73,11 @@ class Trainer():
         train_loss = 0
         t = tqdm(enumerate(self.trainloader), desc='Loss: **** ', total=len(self.trainloader), bar_format='{desc}{bar}{r_bar}')
         for batch_idx, inputs in t:
-            x = inputs.to(self.device)
+            x = [x_i.to(self.device) for x_i in inputs]
             self.encoder_optimizer.zero_grad()
             z = []
-            for i in range(x.shape[1]):
-                z.append(self.net(x[:, i, :, :, :]))
+            for i in range(len(x)):
+                z.append(self.net(x[i]))
 
             loss = self.un_supcon_loss(z)
             loss.backward()

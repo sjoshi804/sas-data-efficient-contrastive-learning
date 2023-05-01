@@ -75,8 +75,7 @@ class CIFAR10Biaugment(CIFAR10Imbalance):
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        return (img, img2), target, index
-
+        return [img, img2]
 
 class CIFAR100Biaugment(CIFAR10Biaugment):
     """`CIFAR100 <https://www.cs.toronto.edu/~kriz/cifar.html>`_ Dataset.
@@ -148,7 +147,7 @@ class STL10Biaugment(torchvision.datasets.STL10):
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        return (img, img2), target, index
+        return [img, img2]
 
 class STL10Multiaugment(torchvision.datasets.STL10):
     def __init__(
@@ -196,8 +195,8 @@ class STL10Multiaugment(torchvision.datasets.STL10):
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        return torch.stack(imgs, dim=0), target, index
-
+        return imgs
+    
 class CIFAR10Multiaugment(CIFAR10Imbalance):
 
     def __init__(self, *args, n_augmentations=8, **kwargs):
@@ -227,7 +226,7 @@ class CIFAR10Multiaugment(CIFAR10Imbalance):
         if self.format_img:
             return imgs, target, index
 
-        return torch.stack(imgs, dim=0), target, index
+        return imgs
 
 
 class CIFAR100Multiaugment(CIFAR10Multiaugment):
@@ -271,7 +270,7 @@ class ImageFolderBiaugment(ImageFolder):
         if self.target_transform is not None:
             target = self.target_transform(target)
 
-        return (img, img2), target, index
+        return [img, img2]
 
 
 def add_indices(dataset_cls):
