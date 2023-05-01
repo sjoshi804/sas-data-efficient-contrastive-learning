@@ -28,6 +28,8 @@ parser.add_argument("--checkpoint-freq", type=int, default=10000, help="How ofte
 parser.add_argument('--dataset', type=str, default=str(SupportedDatasets.CIFAR100.value), help='dataset',
                     choices=[x.value for x in SupportedDatasets])
 parser.add_argument('--load-subset-indices', type=str, default="cifar100-0.2-sas-subset-indices.pkl", help="Path to subset indices")
+parser.add_argument('--random-subset', action="store_true", help="Random subset")
+parser.add_argument('--subset_fraction', type=float, )
 parser.add_argument('--device', type=int, default=-1, help="GPU number to use")
 parser.add_argument('--seed', type=int, default=0, help="Seed for randomness")
 
@@ -40,7 +42,12 @@ np.random.seed(args.seed)
 Random(args.seed)
 
 # Arguments check and initialize global variables
-device = 'cuda:7' if torch.cuda.is_available() else 'cpu'
+device = "cpu"
+if torch.cuda.is_available():
+    if args.device >= 0:
+        device = "cuda:{args.device}"
+    else:
+        device = "cuda"
 best_acc = 0  
 start_epoch = 0  
 
@@ -51,12 +58,18 @@ datasets = get_datasets(args.dataset)
 # Load Subset Indices
 ##############################################################
 
-with open(args.load_subset_indices, "rb") as f:
-    subset_indices = pickle.load(f)
-trainset = sas.subset_dataset.CustomSubsetDataset(
-    dataset=datasets.trainset,
-    subset_indices=subset_indices
-)
+if args.random_subset:
+    trainset = sas.subset_dataset.RandomSubsetDataset(
+        dataset=datasets.trainset,
+        subset_fraction=args.subset_fraction
+    )
+else:
+    with open(args.load_subset_indices, "rb") as f:
+        subset_indices = pickle.load(f)
+    trainset = sas.subset_dataset.CustomSubsetDataset(
+        dataset=datasets.trainset,
+        subset_indices=subset_indices
+    )
 print("subset_size:", len(trainset))
 
 ##############################################################
