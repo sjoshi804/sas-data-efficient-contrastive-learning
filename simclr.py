@@ -6,7 +6,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import subcl
+import sas
 
 from configs import SupportedDatasets, get_datasets
 from resnet import *
@@ -53,7 +53,7 @@ datasets = get_datasets(args.dataset, imbalance=args.imbalance)
 
 with open(args.load_subset_indices, "rb") as f:
     subset_indices = pickle.load(f)
-trainset = subcl.SubsetDataset.CustomSubset(
+trainset = sas.SubsetDataset.CustomSubset(
     trainset=datasets.trainset,
     subset_indices=subset_indices
 )

@@ -8,7 +8,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
 
-from subcl.submodular_maximization import lazy_greedy
+from sas.submodular_maximization import lazy_greedy
 
 """
 Base Subset Dataset (Abstract Base Class)
@@ -121,7 +121,7 @@ class CustomSubsetDataset(BaseSubsetDataset):
         self.initialization_complete()
 
 """
-SubCL Subset Dataset
+sas Subset Dataset
 """
 class SubsetSelectionObjective:
     def __init__(self, distance, threshold=0):
@@ -141,7 +141,7 @@ class SubsetSelectionObjective:
         self.distance[:][i] = 0
         return 
     
-class SubCLSubsetDataset(BaseSubsetDataset):
+class SASSubsetDataset(BaseSubsetDataset):
     def __init__(
         self,
         dataset: Dataset,
@@ -230,7 +230,7 @@ class SubCLSubsetDataset(BaseSubsetDataset):
                     [Z[[i + len(self.partition[latent_class]) * pos_num for i in self.partition[latent_class]]] 
                      for pos_num in range(num_positives)]
                 )
-                pairwise_distance = SubCLSubsetDataset.pairwise_distance(Z_partition, Z_partition)
+                pairwise_distance = SASSubsetDataset.pairwise_distance(Z_partition, Z_partition)
                 augmentation_distance[latent_class] += pairwise_distance[np.ix_(rows, cols)] 
             return augmentation_distance
 
@@ -244,7 +244,7 @@ class SubCLSubsetDataset(BaseSubsetDataset):
                     [Z[[i + len(self.partition[latent_class]) * pos_num for i in self.partition[latent_class]]] 
                      for pos_num in range(num_positives)]
                 )
-                pairwise_distance = SubCLSubsetDataset.pairwise_distance(Z_partition, Z_partition)
+                pairwise_distance = SASSubsetDataset.pairwise_distance(Z_partition, Z_partition)
                 for i in range(num_positives):
                     rows = [range(self.len_dataset * i, self.len_dataset * (i + 1))]
                     for j in range(i + 1, num_positives):
