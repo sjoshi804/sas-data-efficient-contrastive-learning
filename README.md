@@ -10,6 +10,9 @@ Paper: https://arxiv.org/abs/2302.09195
 
 Samples shown for choosing subsets of CIFAR100 
 
+TODO: Complete Sample Usage 
+TODO: Add Contrastive Learning Code for SimCLR to this 
+
 ## CL-Core (default)
 
 ```python

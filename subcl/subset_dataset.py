@@ -1,15 +1,128 @@
-from typing import Dict, Optional
+from abc import ABC
+from typing import Dict, List, Optional
 import math 
+import random 
 
 import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset
 
-from base_subset_dataset import BaseSubsetDataset
-from submodular_maximization import lazy_greedy
+from subcl.submodular_maximization import lazy_greedy
 
+"""
+Base Subset Dataset (Abstract Base Class)
+"""
+class BaseSubsetDataset(ABC, Dataset):
+    def __init__(
+        self,
+        dataset: Dataset,
+        subset_fraction: float,
+        verbose: bool = False
+    ):
+        """
+        :param dataset: Original Dataset
+        :type dataset: Dataset
+        :param subset_fraction: Fractional size of subset
+        :type subset_fraction: float
+        :param verbose: verbose
+        :type verbose: boolean
+        """
+        self.dataset = dataset
+        self.subset_fraction = subset_fraction
+        self.len_dataset = len(self.dataset)
+        self.subset_size = int(self.len_dataset * self.subset_fraction)
+        self.subset_indices = None
+        self.verbose = verbose 
 
+    def initialization_complete(self):
+        if self.verbose:
+            print(f"Subset Size: {self.subset_size}")
+            print(f"Discarded {self.len_dataset - self.subset_size} examples")
+
+    def __len__(self):
+        return self.subset_size
+    
+    def __getitem__(self, index):
+        # Get the index for the corresponding item in the original dataset
+        original_index = self.subset_indices[index]
+        
+        # Get the item from the original dataset at the corresponding index
+        original_item = self.dataset[original_index]
+        
+        return original_item
+
+"""
+Random Subset
+"""
+class RandomSubsetDataset(BaseSubsetDataset):
+    def __init__(
+        self,
+        dataset: Dataset,
+        subset_fraction: float,
+        verbose: bool = False
+    ):
+        """
+        :param dataset: Original Dataset
+        :type dataset: Dataset
+        :param subset_fraction: Fractional size of subset
+        :type subset_fraction: float
+        :param verbose: verbose
+        :type verbose: boolean
+        """
+        super().__init__(
+            dataset=dataset, 
+            subset_fraction=subset_fraction,
+            verbose=verbose
+        )
+        self.subset_indices = random.sample(range(self.len_dataset), self.subset_size)
+        self.initialization_complete()
+        
+    def __len__(self):
+        return self.subset_size
+    
+    def __getitem__(self, index):
+        # Get the index for the corresponding item in the original dataset
+        original_index = self.subset_indices[index]
+        
+        # Get the item from the original dataset at the corresponding index
+        original_item = self.dataset[original_index]
+        
+        return original_item
+
+"""
+Custom Subset
+"""
+class CustomSubsetDataset(BaseSubsetDataset):
+    def __init__(
+        self,
+        dataset: Dataset,
+        subset_indices: List[int],
+        verbose: bool = False,
+    ):
+        """
+        :param dataset: Original Dataset
+        :type dataset: Dataset
+        :param subset_fraction: Fractional size of subset
+        :type subset_fraction: float
+        :param subset_indices: Indices of custom subset
+        :type subset_indices: List[int]
+        :param verbose: verbose
+        :type verbose: boolean
+        """
+        super().__init__(
+            dataset=dataset, 
+            subset_fraction=1.0,
+            verbose=verbose
+        )
+        self.subset_size = len(subset_indices)
+        self.subset_fraction = self.subset_size / len(dataset)
+        self.subset_indices = subset_indices
+        self.initialization_complete()
+
+"""
+SubCL Subset Dataset
+"""
 class SubsetSelectionObjective:
     def __init__(self, distance, threshold=0):
         '''
@@ -28,7 +141,7 @@ class SubsetSelectionObjective:
         self.distance[:][i] = 0
         return 
     
-class CLCoreSubsetDataset(BaseSubsetDataset):
+class SubCLSubsetDataset(BaseSubsetDataset):
     def __init__(
         self,
         dataset: Dataset,
@@ -37,28 +150,35 @@ class CLCoreSubsetDataset(BaseSubsetDataset):
         device: torch.device,
         proxy_model: nn.Module,
         approx_latent_class_partition: Dict[int, int],
-        augmentation_distance: Optional[Dict[int, np.array()]] = None,
+        augmentation_distance: Optional[Dict[int, np.array]] = None,
         num_augmentations=1,
         pairwise_distance_block_size: int = 1024, 
         verbose: bool = False
     ):
         """
-        :param dataset: original dataset for contrastive learning. assumes that dataset[i] = returns a list of augmented views of original example i. 
-        :type dataset: Dataset
-        :param subset_fraction: Fractional size of subset
-        :type subset_fraction: float
-        :param num_downstream_classes: number of downstream classes (can be estimate)
-        :type num_downstream_classes: int
-        :param proxy_model: proxy model to calculate augmentation distance (and kmeans clustering if avoid clip option chosen)
-        :type proxy_model: nn.Module
-        :param augmentation_distance: Pass precomputed dictionary containing augmentation distance for each latent class
-        :type augmentation_distance: Dict[int, np.array]
-        :param num_augmentations: Number of augmentations to consider while approximating augmentation distance
-        :type num_augmentations: int
-        :param pairwise_distance_block_size: block size for calculating pairwise distance. this is just to optimize GPU usage while calculating pairwise distance and will not affect the subset created in anyway. 
-        :type pairwise_distance_block_size: int
-        :param verbose: verbose
-        :type verbose: boolean
+        dataset: Dataset
+            Original dataset for contrastive learning. Assumes that dataset[i] returns a list of augmented views of the original example i.
+
+        subset_fraction: float
+            Fractional size of subset.
+
+        num_downstream_classes: int
+            Number of downstream classes (can be an estimate).
+
+        proxy_model: nn.Module
+            Proxy model to calculate the augmentation distance (and kmeans clustering if the avoid clip option is chosen).
+
+        augmentation_distance: Dict[int, np.array]
+            Pass a precomputed dictionary containing augmentation distance for each latent class.
+
+        num_augmentations: int
+            Number of augmentations to consider while approximating the augmentation distance.
+
+        pairwise_distance_block_size: int
+            Block size for calculating pairwise distance. This is just to optimize GPU usage while calculating pairwise distance and will not affect the subset created in any way.
+
+        verbose: boolean
+            Verbosity of the output.
         """
         super().__init__(
             dataset=dataset, 
@@ -110,7 +230,7 @@ class CLCoreSubsetDataset(BaseSubsetDataset):
                     [Z[[i + len(self.partition[latent_class]) * pos_num for i in self.partition[latent_class]]] 
                      for pos_num in range(num_positives)]
                 )
-                pairwise_distance = CLCoreSubsetDataset.pairwise_distance(Z_partition, Z_partition)
+                pairwise_distance = SubCLSubsetDataset.pairwise_distance(Z_partition, Z_partition)
                 augmentation_distance[latent_class] += pairwise_distance[np.ix_(rows, cols)] 
             return augmentation_distance
 
@@ -124,7 +244,7 @@ class CLCoreSubsetDataset(BaseSubsetDataset):
                     [Z[[i + len(self.partition[latent_class]) * pos_num for i in self.partition[latent_class]]] 
                      for pos_num in range(num_positives)]
                 )
-                pairwise_distance = CLCoreSubsetDataset.pairwise_distance(Z_partition, Z_partition)
+                pairwise_distance = SubCLSubsetDataset.pairwise_distance(Z_partition, Z_partition)
                 for i in range(num_positives):
                     rows = [range(self.len_dataset * i, self.len_dataset * (i + 1))]
                     for j in range(i + 1, num_positives):
@@ -153,7 +273,7 @@ class CLCoreSubsetDataset(BaseSubsetDataset):
     @staticmethod
     def pairwise_distance(Z1: torch.tensor, Z2: torch.tensor, block_size: int):
         similarity_matrices = []
-        for i in range(Z1.shape[0] // block_size + 1)):
+        for i in range(Z1.shape[0] // block_size + 1):
             similarity_matrices_i = []
             e = Z1[i*block_size:(i+1)*block_size]
             for j in range(Z2.shape[0] // block_size + 1):

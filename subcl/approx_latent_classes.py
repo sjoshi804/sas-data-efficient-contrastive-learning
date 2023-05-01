@@ -1,40 +1,55 @@
-from typing import List
+from copy import deepcopy
+from typing import List, Tuple
 
-from fast_pytorch_kmeans import KMeans
 import clip
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from fast_pytorch_kmeans import KMeans
+from tqdm import tqdm
 
 
 def clip_approx(
     img_trainset: torch.utils.data.Dataset,
-    labeled_examples: tuple(List[int], torch.tensor),
+    labeled_example_indices: List[int], 
+    labels: np.array,
     num_classes: int,
-    device: torch.device
+    device: torch.device, 
+    verbose: bool = False,
 ):
-    Z = encode_using_clip(img_trainset)
-    clf = train_linear_classifier(
-        X=Z[labeled_examples[0]], 
-        y=labeled_examples[1], 
-        num_classes=num_classes,
-        device=device
+    Z = encode_using_clip(
+        img_trainset=img_trainset,
+        device=device,
+        verbose=verbose
     )
-    preds = clf(Z).detach().cpu().numpy()
+    clf = train_linear_classifier(
+        X=Z[labeled_example_indices], 
+        y=torch.tensor(labels), 
+        representation_dim=len(Z[0]),
+        num_classes=num_classes,
+        device=device,
+        verbose=verbose
+    )
+    preds = torch.argmax(clf(Z).detach(), dim=1).cpu().numpy()
     return partition_from_preds(preds)
 
 def clip_0shot_approx(
     img_trainset: torch.utils.data.Dataset,
     class_names: List[str],
-    device: torch.device
+    device: torch.device,
+    verbose: bool = False,
 ):
     model, preprocess = clip.load("ViT-B/32")
+    img_trainset = deepcopy(img_trainset)
+    img_trainset.transform = preprocess
+    model = model.to(device)
 
     zeroshot_weights = zeroshot_classifier(class_names)
     logits = []
-    loader = torch.utils.data.DataLoader(img_trainset, batch_size=32, num_workers=2, transforms=preprocess)
+    loader = torch.utils.data.DataLoader(img_trainset, batch_size=32, num_workers=2, transform=preprocess)
     with torch.no_grad():
-        for input in loader:
+        for input in tqdm(loader, "0-shot classification using provided text names for classes", disable=not verbose):
             # predict
             image_features = model.encode_image(input[0].to(device=device))
             image_features /= image_features.norm(dim=-1, keepdim=True)
@@ -47,16 +62,17 @@ def clip_0shot_approx(
     return partition_from_preds(preds)
 
 def kmeans_approx(
-    img_trainset: torch.utils.data.Dataset,
+    trainset: torch.utils.data.Dataset,
     proxy_model: nn.Module,
     num_classes: int,
-    device: torch.device
+    device: torch.device,
+    verbose: bool = False
 ):
     proxy_model.eval()
     Z = []
     with torch.no_grad():
-        loader = torch.utils.data.DataLoader(img_trainset, batch_size=32, num_workers=2)
-        for input in loader:
+        loader = torch.utils.data.DataLoader(trainset, batch_size=32, num_workers=2)
+        for input in tqdm(loader, "Encoding data using proxy model provided", disable=not verbose):
             Z.append(proxy_model(input.to(device)))
     Z = torch.cat(Z, dim=0).to(device=device)
 
@@ -64,22 +80,30 @@ def kmeans_approx(
     preds = kmeans.fit_predict(Z).cpu().numpy()
     return partition_from_preds(preds)
 
-
-def encode_using_clip(img_trainset, device):
+def encode_using_clip(
+        img_trainset: torch.utils.data.Dataset,
+        device: torch.device,
+        verbose: bool = False,
+):
     model, preprocess = clip.load("ViT-B/32")
-    loader = torch.utils.data.DataLoader(img_trainset, batch_size=32, num_workers=2, transforms=preprocess)
+    model = model.to(device)
+    img_trainset = deepcopy(img_trainset)
+    img_trainset.transform = preprocess
+
+    loader = torch.utils.data.DataLoader(img_trainset, batch_size=32, num_workers=2)
     Z = []
     with torch.no_grad():
-        for input in loader:
+        for input in tqdm(loader, desc="Encoding images using CLIP", disable=not verbose):
             Z.append(model.encode_image(input[0].to(device)))
-    return torch.cat(Z, dim=0)
+    Z = torch.cat(Z, dim=0).to(torch.float32)
+    return Z
 
 def partition_from_preds(preds):
     partition = {}
-    for i in enumerate(preds):
-        if preds[i] not in partition:
-            partition[preds[i]] = []
-        partition[preds[i]].append(i)
+    for i, pred in enumerate(preds):
+        if pred not in partition:
+            partition[pred] = []
+        partition[pred].append(i)
     return partition
 
 def train_linear_classifier(
@@ -89,7 +113,8 @@ def train_linear_classifier(
     num_classes: int,
     device: torch.device,
     reg_weight: float = 1e-3,
-    n_lbfgs_steps: int = 500
+    n_lbfgs_steps: int = 500,
+    verbose=False,
 ):
     print('\nL2 Regularization weight: %g' % reg_weight)
 
@@ -102,7 +127,7 @@ def train_linear_classifier(
     clf_optimizer = optim.LBFGS(clf.parameters())
     clf.train()
 
-    for _ in range(n_lbfgs_steps):
+    for _ in tqdm(range(n_lbfgs_steps), desc="Training linear classifier using fraction of labels", disable=not verbose):
         def closure():
             clf_optimizer.zero_grad()
             raw_scores = clf(X_gpu)
@@ -123,7 +148,7 @@ def zeroshot_classifier(class_names):
         'art of the {}.',
         'a photo of the small {}.',
     ]
-    model, preprocess = clip.load("ViT-B/32")
+    model, _ = clip.load("ViT-B/32")
     with torch.no_grad():
         zeroshot_weights = []
         for classname in class_names:
