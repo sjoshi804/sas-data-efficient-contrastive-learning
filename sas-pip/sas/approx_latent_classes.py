@@ -45,9 +45,13 @@ def clip_0shot_approx(
     img_trainset.transform = preprocess
     model = model.to(device)
 
-    zeroshot_weights = zeroshot_classifier(class_names)
+    zeroshot_weights = zeroshot_classifier(
+        class_names=class_names,
+        device=device,
+        verbose=verbose
+    )
     logits = []
-    loader = torch.utils.data.DataLoader(img_trainset, batch_size=32, num_workers=2, transform=preprocess)
+    loader = torch.utils.data.DataLoader(img_trainset, batch_size=32, num_workers=2)
     with torch.no_grad():
         for input in tqdm(loader, "0-shot classification using provided text names for classes", disable=not verbose):
             # predict
@@ -73,10 +77,9 @@ def kmeans_approx(
     with torch.no_grad():
         loader = torch.utils.data.DataLoader(trainset, batch_size=32, num_workers=2)
         for input in tqdm(loader, "Encoding data using proxy model provided", disable=not verbose):
-            Z.append(proxy_model(input.to(device)))
-    Z = torch.cat(Z, dim=0).to(device=device)
-
-    kmeans = KMeans(n_clusters=num_classes, mode='euclidean', verbose=0, max_iter=1000)
+            Z.append(proxy_model(input[0].to(device)))
+    Z = torch.cat(Z, dim=0).to("cpu")
+    kmeans = KMeans(n_clusters=num_classes, mode='euclidean', verbose=int(verbose), max_iter=1000)
     preds = kmeans.fit_predict(Z).cpu().numpy()
     return partition_from_preds(preds)
 
@@ -138,7 +141,11 @@ def train_linear_classifier(
         clf_optimizer.step(closure)
     return clf
 
-def zeroshot_classifier(class_names):
+def zeroshot_classifier(
+    class_names: List[str],
+    device: torch.device,
+    verbose: bool = False
+):
     templates = [
         'itap of the {}.',
         'a bad photo of the {}',
@@ -147,17 +154,38 @@ def zeroshot_classifier(class_names):
         'a {} in a video game.',
         'art of the {}.',
         'a photo of the small {}.',
+        'a photo of a {}.',
+        'a blurry photo of a {}.',
+        'a black and white photo of a {}.',
+        'a low contrast photo of a {}.',
+        'a high contrast photo of a {}.',
+        'a bad photo of a {}.',
+        'a good photo of a {}.',
+        'a photo of a small {}.',
+        'a photo of a big {}.',
+        'a photo of the {}.',
+        'a blurry photo of the {}.',
+        'a black and white photo of the {}.',
+        'a low contrast photo of the {}.',
+        'a high contrast photo of the {}.',
+        'a bad photo of the {}.',
+        'a good photo of the {}.',
+        'a photo of the small {}.',
+        'a photo of the big {}.',
     ]
+    
     model, _ = clip.load("ViT-B/32")
+    model = model.to(device)
+
     with torch.no_grad():
         zeroshot_weights = []
-        for classname in class_names:
+        for classname in tqdm(class_names, desc="Creating zero shot classifier", disable=not verbose):
             texts = [template.format(classname) for template in templates] #format with class
-            texts = clip.tokenize(texts).cuda() #tokenize
+            texts = clip.tokenize(texts).to(device) #tokenize
             class_embeddings = model.encode_text(texts) #embed with text encoder
             class_embeddings /= class_embeddings.norm(dim=-1, keepdim=True)
             class_embedding = class_embeddings.mean(dim=0)
             class_embedding /= class_embedding.norm()
             zeroshot_weights.append(class_embedding)
-        zeroshot_weights = torch.stack(zeroshot_weights, dim=1).cuda()
+        zeroshot_weights = torch.stack(zeroshot_weights, dim=1)
     return zeroshot_weights
