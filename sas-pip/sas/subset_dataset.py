@@ -10,6 +10,7 @@ import torch.nn as nn
 from torch.utils.data import Dataset
 
 from sas.submodular_maximization import lazy_greedy
+from tqdm import tqdm
 
 """
 Base Subset Dataset (Abstract Base Class)
@@ -223,12 +224,14 @@ class SASSubsetDataset(BaseSubsetDataset):
         for latent_class in self.partition.keys():
             augmentation_distance[latent_class] = np.zeros((len(self.partition[latent_class]), len(self.partition[latent_class])))
 
-        num_positives = len(self.dataset[i])
-        num_runs = math.ceil(self.num_augmentations / len(self.dataset[i]))
+        num_positives = len(self.dataset[0])
+        num_runs = math.ceil(self.num_augmentations / num_positives)
 
         # If considering only 1 augmentation for speed (this approach works when the proxy model has good alignment 
         # i.e. most augmentations of an example have embeddings that are similar to the embeddings of the other examples)
         if self.num_augmentations == 1:
+            if self.verbose:
+                print("num_augmentations = 1, computing pairwise distance using embeddings, assuming dataset[i][0] gives ith original example not augmentation.")
             Z = self.encode_augmented_trainset()
             for latent_class in self.partition.keys():
                 Z_partition = torch.cat(
@@ -236,13 +239,10 @@ class SASSubsetDataset(BaseSubsetDataset):
                      for pos_num in range(num_positives)]
                 )
                 pairwise_distance = SASSubsetDataset.pairwise_distance(Z_partition, Z_partition)
-                augmentation_distance[latent_class] += pairwise_distance[np.ix_(rows, cols)] 
+                augmentation_distance[latent_class] += pairwise_distance
             return augmentation_distance
 
-        for _ in num_runs:
-            if self.num_augmentations == 1:
-                Z = self.encode_augmented_trainset()
-
+        for _ in tqdm(range(num_runs), desc="Approximating augmentation distance", disable = not self.verbose):
             Z = self.encode_augmented_trainset(num_positives=num_positives)
             for latent_class in self.partition.keys():
                 Z_partition = torch.cat(
@@ -250,11 +250,12 @@ class SASSubsetDataset(BaseSubsetDataset):
                      for pos_num in range(num_positives)]
                 )
                 pairwise_distance = SASSubsetDataset.pairwise_distance(Z_partition, Z_partition)
+                len_partition = len(self.partition[latent_class])
                 for i in range(num_positives):
-                    rows = [range(self.len_dataset * i, self.len_dataset * (i + 1))]
+                    rows = range(len_partition * i, len_partition * (i + 1))
                     for j in range(i + 1, num_positives):
-                        cols = [range(self.len_dataset * j, self.len_dataset * (j + 1))]
-                        augmentation_distance[latent_class] += pairwise_distance[np.ix_(rows, cols)] / (i * (i - 1))
+                        cols = range(len_partition * j, len_partition * (j + 1))
+                        augmentation_distance[latent_class] += pairwise_distance[np.ix_(rows, cols)] / (num_positives * (num_positives - 1))
 
         return augmentation_distance
 
@@ -266,17 +267,20 @@ class SASSubsetDataset(BaseSubsetDataset):
                 Z.append(self.proxy_model(input[0].to(self.device)))
         return Z
     
-    def encode_augmented_trainset(self, num_positives):
+    def encode_augmented_trainset(self, num_positives=1):
         trainloader = torch.utils.data.DataLoader(self.dataset, batch_size=self.pairwise_distance_block_size, shuffle=False, num_workers=2, pin_memory=True)
         with torch.no_grad():
             Z = [[]] * num_positives
-            for input in enumerate(trainloader):
+            for input in trainloader:
                 for i in range(num_positives):
                     Z[i].append(self.proxy_model(input[i].to(self.device)))
+        for i in range(num_positives):
+            Z[i] = torch.cat(Z[i], dim=0)
+        Z = torch.cat(Z, dim=0)
         return Z
 
     @staticmethod
-    def pairwise_distance(Z1: torch.tensor, Z2: torch.tensor, block_size: int):
+    def pairwise_distance(Z1: torch.tensor, Z2: torch.tensor, block_size: int = 1024):
         similarity_matrices = []
         for i in range(Z1.shape[0] // block_size + 1):
             similarity_matrices_i = []

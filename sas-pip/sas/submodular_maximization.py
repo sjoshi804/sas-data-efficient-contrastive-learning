@@ -34,12 +34,12 @@ def lazy_greedy(F, V, B):
         #if improv >= 0:
         if not order:
             sset.append(el[1])
-            F.add(sset, el[1])
+            F.add(el[1])
         else:
             top = _heappop_max(order)
             if improv >= top[0]:
                 sset.append(el[1])
-                F.add(sset, el[1])
+                F.add(el[1])
             else:
                 _heappush_max(order, (improv, el[1]))
             _heappush_max(order, top)
