@@ -12,6 +12,7 @@ Samples shown for choosing subsets of CIFAR100
 
 TODO: Complete Sample Usage 
 TODO: Add Contrastive Learning Code for SimCLR to this 
+TODO: Clarify what format of dataset is expected for each function, see if you can make that an interface and ask all to implement?
 
 ## CL-Core (default)
 
@@ -72,6 +73,7 @@ class CIFAR100Multiaugment(torchvision.datasets.CIFAR100):
 
 # How to cite?
 
+```bibtex
 @misc{joshi2023dataefficient,
       title={Data-Efficient Contrastive Self-supervised Learning: Easy Examples Contribute the Most}, 
       author={Siddharth Joshi and Baharan Mirzasoleiman},
@@ -80,3 +82,4 @@ class CIFAR100Multiaugment(torchvision.datasets.CIFAR100):
       archivePrefix={arXiv},
       primaryClass={cs.LG}
 }
+```
