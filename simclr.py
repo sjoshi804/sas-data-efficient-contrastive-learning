@@ -22,7 +22,6 @@ from util import Random
 
 def main(rank: int, world_size: int, args):
 
-
     # Determine Device 
     device = rank
     if args.distributed:
