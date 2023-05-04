@@ -127,7 +127,7 @@ class CustomSubsetDataset(BaseSubsetDataset):
         self.initialization_complete()
 
 """
-sas Subset Dataset
+Subsets that maximize Augmentation Similarity Subset Dataset
 """
 class SubsetSelectionObjective:
     def __init__(self, distance, threshold=0):
