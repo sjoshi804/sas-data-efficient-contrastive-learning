@@ -129,7 +129,7 @@ class ImageNet(torch.utils.data.Dataset):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        image = self.transform(Image.open(os.path.join(self.root, self.images[idx])))
+        image = self.transform(Image.open(os.path.join(self.root, self.images[idx])).convert('RGB'))
         label = self.labels[idx]
         return image, label
         
