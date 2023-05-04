@@ -59,8 +59,8 @@ class Trainer():
         batch_size = int(len(z) / num_positive)
 
         if self.distributed:
-            gathered_z = [torch.zeros_like(z) for _ in range(self.world_size)]
-            dist.all_gather(gathered_z, z)
+            all_z = [torch.zeros_like(z) for _ in range(self.world_size)]
+            dist.all_gather(all_z, z)
             # Move all tensors to the same device
             aug_z = []
             for i in range(num_positive):
@@ -69,7 +69,7 @@ class Trainer():
                     if rank == self.rank:
                         aug_z[-1].append(z[i * batch_size: (i+1) * batch_size])
                     else:
-                        aug_z[-1].append(gathered_z[rank][i * batch_size: (i+1) * batch_size])
+                        aug_z[-1].append(all_z[rank][i * batch_size: (i+1) * batch_size])
             z = [torch.cat(aug_z_i, dim=0) for aug_z_i in aug_z]
         else: 
             aug_z = []
@@ -122,14 +122,14 @@ class Trainer():
     def test(self):
         X, y = encode_train_set(self.clftrainloader, self.device, self.net)
         representation_dim = self.net.module.representation_dim if self.distributed else self.net.representation_dim
-        clf = train_clf(X, y, representation_dim, self.num_classes, self.device, reg_weight=1e-5, iter=500)
+        clf = train_clf(X, y, representation_dim, self.num_classes, self.device, reg_weight=1e-5, iter=100)
         acc, _ = test_clf(self.testloader, self.device, self.net, clf)
 
         if acc > self.best_acc:
             self.best_acc = acc
-
+            
         return acc
-    
+
     def save_checkpoint(self, prefix):
         if self.world_size > 1:
             torch.save(self.net.module, f"{prefix}-net.pt")

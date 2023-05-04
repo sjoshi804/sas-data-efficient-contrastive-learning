@@ -57,8 +57,8 @@ def main(rank: int, world_size: int, args):
             dataset=datasets.trainset,
             subset_fraction=args.subset_fraction
         )
-    elif args.load_subset_indices != "":
-        with open(args.load_subset_indices, "rb") as f:
+    elif args.subset_indices != "":
+        with open(args.subset_indices, "rb") as f:
             subset_indices = pickle.load(f)
         trainset = sas.subset_dataset.CustomSubsetDataset(
             dataset=datasets.trainset,
@@ -67,15 +67,6 @@ def main(rank: int, world_size: int, args):
     else:
         trainset = datasets.trainset
     print("subset_size:", len(trainset))
-
-    ##############################################################
-    # Data Loaders
-    ##############################################################
-
-    # Trainloader constructed later due to distributed training support
-
-    testloader = torch.utils.data.DataLoader(datasets.testset, batch_size=1000, shuffle=False, num_workers=args.num_workers, pin_memory=True)
-    clftrainloader = torch.utils.data.DataLoader(datasets.clftrainset, batch_size=4096, shuffle=False, num_workers=args.num_workers, pin_memory=True)
 
     # Model
     print('==> Building model..')
@@ -108,6 +99,35 @@ def main(rank: int, world_size: int, args):
         
 
     ##############################################################
+    # Data Loaders
+    ##############################################################
+
+    trainloader = torch.utils.data.DataLoader(
+        dataset=trainset,
+        batch_size=args.batch_size,
+        shuffle=False,
+        sampler=DistributedSampler(trainset, shuffle=True, num_replicas=world_size, rank=rank, drop_last=True) if args.distributed else None,
+        num_workers=4,
+        pin_memory=True,
+    )
+
+    clftrainloader = torch.utils.data.DataLoader(
+        dataset=datasets.clftrainset,
+        batch_size=args.batch_size, 
+        shuffle=False, 
+        num_workers=4, 
+        pin_memory=True
+    )
+
+    testloader = torch.utils.data.DataLoader(
+        dataset=datasets.testset,
+        batch_size=args.batch_size, 
+        shuffle=False, 
+        num_workers=4,
+        pin_memory=True,
+    )
+    
+    ##############################################################
     # Main Loop (Train, Test)
     ##############################################################
 
@@ -116,19 +136,7 @@ def main(rank: int, world_size: int, args):
 
     if args.distributed:
         ddp_setup(rank, world_size, str(args.port))
-    # TODO: FIXME
-    trainloader = torch.utils.data.DataLoader(
-        dataset=trainset,
-        batch_size=args.batch_size,
-        shuffle=False,
-        sampler=DistributedSampler(trainset, shuffle=False, num_replicas=world_size, rank=rank, drop_last=True) if args.distributed else None,
-        num_workers=4,
-        pin_memory=True,
-        drop_last=True
-    )
 
-    # net = torch.load("net.pt")
-    #critic = torch.load("critic.pt")
     net = net.to(device)
     critic = critic.to(device)
     if args.distributed:
@@ -171,7 +179,6 @@ def main(rank: int, world_size: int, args):
                 step=epoch
             )
 
-
         # Checkpoint Model
         if ((not args.distributed or rank == 0) and (epoch + 1) % args.checkpoint_freq == 0):
             trainer.save_checkpoint(prefix=f"{DT_STRING}-{args.dataset}-{args.arch}-{epoch}")
@@ -205,14 +212,13 @@ if __name__ == "__main__":
     parser.add_argument("--num-epochs", type=int, default=400, help='Number of training epochs')
     parser.add_argument("--arch", type=str, default='resnet18', help='Encoder architecture',
                         choices=['resnet10', 'resnet18', 'resnet34', 'resnet50'])
-    parser.add_argument("--num-workers", type=int, default=2, help='Number of threads for data loaders')
     parser.add_argument("--test-freq", type=int, default=10, help='Frequency to fit a linear clf with L-BFGS for testing'
                                                                 'Not appropriate for large datasets. Set 0 to avoid '
                                                                 'classifier only training here.')
     parser.add_argument("--checkpoint-freq", type=int, default=10000, help="How often to checkpoint model")
     parser.add_argument('--dataset', type=str, default=str(SupportedDatasets.CIFAR100.value), help='dataset',
                         choices=[x.value for x in SupportedDatasets])
-    parser.add_argument('--load-subset-indices', type=str, default="", help="Path to subset indices")
+    parser.add_argument('--subset-indices', type=str, default="", help="Path to subset indices")
     parser.add_argument('--random-subset', action="store_true", help="Random subset")
     parser.add_argument('--subset_fraction', type=float, )
     parser.add_argument('--device', type=int, default=-1, help="GPU number to use")
