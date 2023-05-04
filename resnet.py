@@ -22,7 +22,6 @@ class StemCIFAR(nn.Module):
     def forward(self, inputs):
         return F.relu(self.bn1(self.conv1(inputs)))
 
-
 class StemSTL(StemCIFAR):
     def __init__(self):
         super(StemSTL, self).__init__()
@@ -43,6 +42,22 @@ class StemTinyImageNet(StemCIFAR):
         out = self.maxpool(out)
         return out
 
+class StemImageNet(nn.Module):
+    def __init__(self):
+        super(StemImageNet, self).__init__()
+        self.inplanes = 64
+        self.conv1 = nn.Conv2d(3, self.inplanes, kernel_size=7, stride=2, padding=3, bias=False)
+        self.bn1 = nn.BatchNorm2d(self.inplanes)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu(x)
+        x = self.maxpool(x)
+        return x
+    
 class ResNet(nn.Module):
 
     def __init__(self, block, layers, num_classes=None, zero_init_residual=False,

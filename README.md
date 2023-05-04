@@ -6,6 +6,19 @@ Project Page: https://sjoshi804.github.io/data-efficient-contrastive-learning/
 
 Paper: https://arxiv.org/abs/2302.09195
 
+# BibTex Citation
+
+```bibtex
+@misc{joshi2023dataefficient,
+      title={Data-Efficient Contrastive Self-supervised Learning: Easy Examples Contribute the Most}, 
+      author={Siddharth Joshi and Baharan Mirzasoleiman},
+      year={2023},
+      eprint={2302.09195},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
+```
+
 # Sample Usage
 
 Samples shown for choosing subsets of CIFAR100 
@@ -71,15 +84,3 @@ class CIFAR100Multiaugment(torchvision.datasets.CIFAR100):
         return imgs
 ```
 
-# How to cite?
-
-```bibtex
-@misc{joshi2023dataefficient,
-      title={Data-Efficient Contrastive Self-supervised Learning: Easy Examples Contribute the Most}, 
-      author={Siddharth Joshi and Baharan Mirzasoleiman},
-      year={2023},
-      eprint={2302.09195},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG}
-}
-```

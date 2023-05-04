@@ -39,7 +39,5 @@ class LinearCritic(nn.Module):
         
         return sim
 
-    def forward(self, z1, z2):
-        raw_scores = self.compute_sim(z1, z2)
-        targets = torch.arange(2 * (z1.shape[0]), dtype=torch.long, device=raw_scores.device)
-        return raw_scores, targets
+    def forward(self, z):
+        return self.compute_sim(z)
