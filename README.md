@@ -2,7 +2,7 @@
 
 ## Abstract
 
-Self-supervised learning (SSL) learns high-quality representations from large pools of unlabeled training data. As datasets grow larger, it becomes crucial to identify the examples that contribute the most to learning such representations. This enables efficient SSL by reducing the volume of data required for learning high-quality representations. Nevertheless, quantifying the value of examples for SSL has remained an open question. In this work, we address this for the first time, by proving that examples that contribute the most to contrastive SSL are those that have the most similar augmentations to other examples, in expectation. We name such subsets *Subsets that maximize Augmentation Similarity (SAS)*. We provide rigorous guarantees for the generalization performance of SSL on such subsets. Empirically, we discover, perhaps surprisingly, the subsets that contribute the most to SSL are those that contribute the least to supervised learning. Through extensive experiments, we show we can safely exclude 20% of examples from CIFAR100 and 40% from STL10 and TinyImageNet, without affecting downstream task performance. We also show that our subsets outperform random subsets by more than 2% on CIFAR10.
+Self-supervised learning (SSL) learns high-quality representations from large pools of unlabeled training data. As datasets grow larger, it becomes crucial to identify the examples that contribute the most to learning such representations. This enables efficient SSL by reducing the volume of data required for learning high-quality representations. Nevertheless, quantifying the value of examples for SSL has remained an open question. In this work, we address this for the first time, by proving that examples that contribute the most to contrastive SSL are those that have the most similar augmentations to other examples, in expectation. We name such subsets *Subsets that maximize Augmentation Similarity (SAS)*. We provide rigorous guarantees for the generalization performance of SSL on such subsets. Empirically, we discover, perhaps surprisingly, the subsets that contribute the most to SSL are those that contribute the least to supervised learning. Through extensive experiments, we show we can safely exclude 20% of examples from CIFAR100 and 40% from STL10 and TinyImageNet, without affecting downstream task performance. We also show that our subsets outperform random subsets by more than 2% on CIFAR10. We also demonstrate that these subsets are effective across contrastive SSL methods (evaluated on SimCLR, MoCo, SimSiam, BYOL).
 
 Project Page: https://sjoshi804.github.io/data-efficient-contrastive-learning/
 
@@ -23,12 +23,21 @@ Please cite this if you use this code / paper in your work.
 }
 ```
 
+## Example Found Subset
+
+Example subsets can be found in /examples
+
+Subsets Provided:
+
+- CIFAR100 - 20%, 40%, 60%, 80% subsets
+- STL10 - 20%, 40%, 60%, 80% subsets
+- CIFAR10 - 5%, 10%, 15%, 20% subsets
+- TinyImageNet (coming soon)
+- ImageNet (coming soon)
+
 ## Sample Usage
 
 Samples shown for choosing subsets of CIFAR100
-
-TODO: Complete Sample Usage
-TODO: Clarify what format of dataset is expected for each function, see if you can make that an interface and ask all to implement?
 
 ### SAS (default)
 
