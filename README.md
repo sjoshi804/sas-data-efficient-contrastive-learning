@@ -37,6 +37,11 @@ Subsets Provided:
 
 ## Sample Usage
 
+```bash
+pip install sas-pip/
+pip install -r requirements.txt
+```
+
 Samples shown for choosing subsets of CIFAR100
 
 ### SAS (default)
