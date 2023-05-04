@@ -23,7 +23,7 @@ Please cite this if you use this code / paper in your work.
 }
 ```
 
-## Example Found Subset
+## Examples
 
 Example subsets can be found in /examples
 
