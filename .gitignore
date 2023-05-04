@@ -1,6 +1,5 @@
 **/__pycache__
 sas.egg-info
 build
-*.pkl
 wandb
 *.pt
