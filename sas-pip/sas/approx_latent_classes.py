@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import List, Tuple
+from typing import List
 
 import clip
 import numpy as np
@@ -9,13 +9,13 @@ import torch.optim as optim
 from fast_pytorch_kmeans import KMeans
 from tqdm import tqdm
 
-
 def clip_approx(
     img_trainset: torch.utils.data.Dataset,
     labeled_example_indices: List[int], 
     labels: np.array,
     num_classes: int,
     device: torch.device, 
+    batch_size: int = 512,
     verbose: bool = False,
 ):
     Z = encode_using_clip(
@@ -31,7 +31,11 @@ def clip_approx(
         device=device,
         verbose=verbose
     )
-    preds = torch.argmax(clf(Z).detach(), dim=1).cpu().numpy()
+    preds = []
+    for start_idx in range(0, len(Z), batch_size):
+        preds.append(torch.argmax(clf(Z[start_idx:start_idx + batch_size]).detach(), dim=1).cpu())
+    preds = torch.cat(preds).numpy()
+
     return partition_from_preds(preds)
 
 def clip_0shot_approx(
@@ -119,7 +123,8 @@ def train_linear_classifier(
     n_lbfgs_steps: int = 500,
     verbose=False,
 ):
-    print('\nL2 Regularization weight: %g' % reg_weight)
+    if verbose:
+        print('\nL2 Regularization weight: %g' % reg_weight)
 
     criterion = nn.CrossEntropyLoss()
     X_gpu = X.to(device)

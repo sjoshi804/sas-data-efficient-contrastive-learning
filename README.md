@@ -58,10 +58,10 @@ import torch
 import torchvision
 from PIL import Image
 
-class CIFAR100Multiaugment(torchvision.datasets.CIFAR100):
+class CIFAR100Augment(torchvision.datasets.CIFAR100):
 
-    def __init__(self, *args, n_augmentations=8, **kwargs):
-        super(CIFAR10Multiaugment, self).__init__(*args, **kwargs)
+    def __init__(self, *args, n_augmentations=2, **kwargs):
+        super(CIFAR100Augment, self).__init__(*args, **kwargs)
         self.n_augmentations = n_augmentations
         assert self.transforms is not None
 
