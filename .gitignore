@@ -3,3 +3,4 @@ sas.egg-info
 build
 *.pkl
 wandb
+*.pt
