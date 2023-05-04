@@ -62,11 +62,28 @@ def get_datasets(dataset: str, augment_clf_train=False, add_indices_to_data=Fals
         transforms.Normalize(*CACHED_MEAN_STD[dataset]),
     ])
 
-    transform_test = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(*CACHED_MEAN_STD[dataset]),
-    ])
+    if dataset == SupportedDatasets.IMAGENET.value:
+        transform_test = transforms.Compose([
+            transforms.Resize(256),
+            transforms.CenterCrop(224),
+            transforms.ToTensor(),
+            transforms.Normalize(*CACHED_MEAN_STD[dataset]),
+        ])
+    else:
+        transform_test = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(*CACHED_MEAN_STD[dataset]),
+        ])
 
+    if augment_clf_train:
+        transform_clftrain = transforms.Compose([
+            transforms.RandomResizedCrop(img_size, interpolation=Image.BICUBIC),
+            transforms.RandomHorizontalFlip(),
+            transforms.ToTensor(),
+            transforms.Normalize(*CACHED_MEAN_STD[dataset]),
+        ])
+    else:
+        transform_clftrain = transform_test
     if augment_clf_train:
         transform_clftrain = transforms.Compose([
             transforms.RandomResizedCrop(img_size, interpolation=Image.BICUBIC),
