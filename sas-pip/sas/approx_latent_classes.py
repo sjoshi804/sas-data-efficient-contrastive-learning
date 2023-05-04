@@ -12,7 +12,7 @@ from tqdm import tqdm
 def clip_approx(
     img_trainset: torch.utils.data.Dataset,
     labeled_example_indices: List[int], 
-    labels: np.array,
+    labeled_examples_labels: np.array,
     num_classes: int,
     device: torch.device, 
     batch_size: int = 512,
@@ -25,7 +25,7 @@ def clip_approx(
     )
     clf = train_linear_classifier(
         X=Z[labeled_example_indices], 
-        y=torch.tensor(labels), 
+        y=torch.tensor(labeled_examples_labels), 
         representation_dim=len(Z[0]),
         num_classes=num_classes,
         device=device,
