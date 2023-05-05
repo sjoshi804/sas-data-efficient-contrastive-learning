@@ -35,6 +35,17 @@ Subsets Provided:
 - TinyImageNet (coming soon)
 - ImageNet (coming soon)
 
+To get the subset indices:
+
+```python
+import pickle
+
+with open(f"<subset-file-name>", "rb") as f:
+    subset_indices = pickle.load(f)
+```
+
+And then pass this to CustomSubsetDataset as the subset indices argument to get the corresponding subset dataset object. (More details below)
+
 ## Sample Usage
 
 
