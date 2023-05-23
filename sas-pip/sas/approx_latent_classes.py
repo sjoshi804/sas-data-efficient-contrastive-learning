@@ -21,6 +21,7 @@ def clip_approx(
     Z = encode_using_clip(
         img_trainset=img_trainset,
         device=device,
+        batch_size=batch_size,
         verbose=verbose
     )
     clf = train_linear_classifier(
@@ -44,10 +45,9 @@ def clip_0shot_approx(
     device: torch.device,
     verbose: bool = False,
 ):
-    model, preprocess = clip.load("ViT-B/32")
+    model, preprocess = clip.load("ViT-B/32", device=device)
     img_trainset = deepcopy(img_trainset)
     img_trainset.transform = preprocess
-    model = model.to(device)
 
     zeroshot_weights = zeroshot_classifier(
         class_names=class_names,
@@ -90,14 +90,14 @@ def kmeans_approx(
 def encode_using_clip(
         img_trainset: torch.utils.data.Dataset,
         device: torch.device,
+        batch_size=512,
         verbose: bool = False,
 ):
-    model, preprocess = clip.load("ViT-B/32")
-    model = model.to(device)
+    model, preprocess = clip.load("ViT-B/32", device=device)
     img_trainset = deepcopy(img_trainset)
     img_trainset.transform = preprocess
 
-    loader = torch.utils.data.DataLoader(img_trainset, batch_size=32, num_workers=2)
+    loader = torch.utils.data.DataLoader(img_trainset, batch_size=batch_size, num_workers=8)
     Z = []
     with torch.no_grad():
         for input in tqdm(loader, desc="Encoding images using CLIP", disable=not verbose):

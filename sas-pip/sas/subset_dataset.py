@@ -154,8 +154,8 @@ class SASSubsetDataset(BaseSubsetDataset):
         subset_fraction: float,
         num_downstream_classes: int,
         device: torch.device,
-        proxy_model: nn.Module,
         approx_latent_class_partition: Dict[int, int],
+        proxy_model: Optional[nn.Module] = None,
         augmentation_distance: Optional[Dict[int, np.array]] = None,
         num_augmentations=1,
         pairwise_distance_block_size: int = 1024, 
@@ -203,7 +203,7 @@ class SASSubsetDataset(BaseSubsetDataset):
             self.augmentation_distance = self.approximate_augmentation_distance()
 
         class_wise_idx = {}
-        for latent_class in self.partition.keys():
+        for latent_class in tqdm(self.partition.keys(), desc="Subset Selection:", disable=not verbose):
             F = SubsetSelectionObjective(self.augmentation_distance[latent_class].copy())
             class_wise_idx[latent_class] = lazy_greedy(F, range(len(self.augmentation_distance[latent_class])), len(self.augmentation_distance[latent_class]))
             class_wise_idx[latent_class] = [self.partition[latent_class][i] for i in class_wise_idx[latent_class]]

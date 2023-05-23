@@ -118,7 +118,7 @@ def add_indices(dataset_cls):
     return NewClass
 
 class ImageNet(torch.utils.data.Dataset):
-    def __init__(self, root, transform):
+    def __init__(self, root, transform=None):
         self.root = root
         df = pd.read_csv(os.path.join(root, "labels.csv"), on_bad_lines='skip')
         self.images = df["image"]
@@ -129,7 +129,9 @@ class ImageNet(torch.utils.data.Dataset):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        image = self.transform(Image.open(os.path.join(self.root, self.images[idx])).convert('RGB'))
+        image = Image.open(os.path.join(self.root, self.images[idx])).convert('RGB')
+        if self.transform is not None:
+            image = self.transform(image)
         label = self.labels[idx]
         return image, label
         
