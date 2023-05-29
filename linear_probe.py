@@ -107,12 +107,13 @@ def main(rank: int, world_size: int, args: int):
     for epoch in range(args.num_epochs):
         train_loss = train_clf(epoch)
         if not args.distributed or rank == 0:
-            acc, _ = test_clf(testloader, device, net, clf)
+            acc, top5acc = test_clf(testloader, device, net, clf)
             wandb.log(
                 {
                     "test":
                     {
-                        "acc": acc
+                        "acc": acc,
+                        "top5acc": top5acc
                     },
                     "train":
                     {
@@ -134,7 +135,9 @@ def main(rank: int, world_size: int, args: int):
                 }
             }
         )
-    destroy_process_group()
+    
+    if args.distributed:
+        destroy_process_group()
 
 ##############################################################
 # Distributed Training Setup
@@ -150,7 +153,7 @@ def ddp_setup(rank: int, world_size: int, port: str):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PyTorch Linear Probe')
     parser = argparse.ArgumentParser(description='Train downstream classifier with gradients.')
-    parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
+    parser.add_argument('--lr', default=0.01, type=float, help='learning rate')
     parser.add_argument("--momentum", default=0.9, type=float, help='SGD momentum')
     parser.add_argument("--batch-size", type=int, default=512, help='Training batch size')
     parser.add_argument("--num-epochs", type=int, default=2, help='Number of training epochs')

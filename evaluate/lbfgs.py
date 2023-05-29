@@ -1,4 +1,5 @@
 import torch
+import numpy as np 
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -111,6 +112,7 @@ def test_clf(testloader, device, net, clf):
     total = 0
     acc_per_point = []
     el2n = []
+    top5_acc = []
     with torch.no_grad():
         t = tqdm(enumerate(testloader), total=len(testloader), desc='Loss: **** | Test Acc: ****% ',
                  bar_format='{desc}{bar}{r_bar}')
@@ -126,8 +128,25 @@ def test_clf(testloader, device, net, clf):
             num_classes = len(raw_scores[0])
             el2n.append(torch.norm((raw_scores - F.one_hot(targets, num_classes=num_classes)), dim=-1))
             acc_per_point.append(predicted.eq(targets))
+            top5_acc.append(top5accuracy(raw_scores, targets))
             correct += acc_per_point[-1].sum().item()
             t.set_description('Loss: %.3f | Test Acc: %.3f%% ' % (test_clf_loss / (batch_idx + 1), 100. * correct / total))
-
+            
     acc = 100. * correct / total
-    return acc, (torch.cat(acc_per_point), torch.cat(el2n))
+    return acc, np.mean(top5_acc)
+
+def top5accuracy(output, target, topk=(5,)):
+    """Computes the accuracy over the k top predictions for the specified values of k"""
+    with torch.no_grad():
+        maxk = max(topk)
+        batch_size = target.size(0)
+
+        _, pred = output.topk(maxk, 1, True, True)
+        pred = pred.t()
+        correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+        res = []
+        for k in topk:
+            correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
+            res.append(correct_k.mul_(100.0 / batch_size))
+        return res
