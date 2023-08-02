@@ -123,7 +123,7 @@ class Trainer():
         X, y = encode_train_set(self.clftrainloader, self.device, self.net)
         representation_dim = self.net.module.representation_dim if self.distributed else self.net.representation_dim
         clf = train_clf(X, y, representation_dim, self.num_classes, self.device, reg_weight=1e-5, iter=100)
-        acc, _ = test_clf(self.testloader, self.device, self.net, clf)
+        acc = test_clf(self.testloader, self.device, self.net, clf)
 
         if acc > self.best_acc:
             self.best_acc = acc
