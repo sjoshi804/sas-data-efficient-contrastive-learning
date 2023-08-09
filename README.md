@@ -6,7 +6,7 @@ Self-supervised learning (SSL) learns high-quality representations from large po
 
 [Project Page](https://sjoshi804.github.io/data-efficient-contrastive-learning/)
 
-[Paper](https://arxiv.org/abs/2302.09195)
+[Paper](https://proceedings.mlr.press/v202/joshi23b.html)
 
 ## BibTex Citation
 
