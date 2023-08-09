@@ -141,7 +141,7 @@ class SubsetSelectionObjective:
         self.threshold = threshold
 
     def inc(self, sset, i):
-        return np.sum(self.distance[i] * (self.distance[i] > 0)) - np.sum(self.distance[np.ix_(sset, [i])])
+        return np.sum(self.distance[i] * (self.distance[i] >= self.threshold)) - np.sum(self.distance[np.ix_(sset, [i])])
     
     def add(self, i):
         self.distance[:][i] = 0
@@ -157,8 +157,9 @@ class SASSubsetDataset(BaseSubsetDataset):
         approx_latent_class_partition: Dict[int, int],
         proxy_model: Optional[nn.Module] = None,
         augmentation_distance: Optional[Dict[int, np.array]] = None,
-        num_augmentations=1,
+        num_runs=1,
         pairwise_distance_block_size: int = 1024, 
+        threshold: float = 0.0,
         verbose: bool = False
     ):
         """
@@ -196,7 +197,7 @@ class SASSubsetDataset(BaseSubsetDataset):
         self.proxy_model = proxy_model
         self.partition = approx_latent_class_partition
         self.augmentation_distance = augmentation_distance
-        self.num_augmentations = num_augmentations
+        self.num_runs = num_runs
         self.pairwise_distance_block_size = pairwise_distance_block_size
 
         if self.augmentation_distance == None:
@@ -204,7 +205,7 @@ class SASSubsetDataset(BaseSubsetDataset):
 
         class_wise_idx = {}
         for latent_class in tqdm(self.partition.keys(), desc="Subset Selection:", disable=not verbose):
-            F = SubsetSelectionObjective(self.augmentation_distance[latent_class].copy())
+            F = SubsetSelectionObjective(self.augmentation_distance[latent_class].copy(), threshold=threshold)
             class_wise_idx[latent_class] = lazy_greedy(F, range(len(self.augmentation_distance[latent_class])), len(self.augmentation_distance[latent_class]))
             class_wise_idx[latent_class] = [self.partition[latent_class][i] for i in class_wise_idx[latent_class]]
             
@@ -221,59 +222,30 @@ class SASSubsetDataset(BaseSubsetDataset):
 
         # Initialize augmentation distance with all 0s
         augmentation_distance = {}
+        Z = self.encode_trainset()
         for latent_class in self.partition.keys():
-            augmentation_distance[latent_class] = np.zeros((len(self.partition[latent_class]), len(self.partition[latent_class])))
-
-        num_positives = len(self.dataset[0])
-        num_runs = math.ceil(self.num_augmentations / num_positives)
-
-        # If considering only 1 augmentation for speed (this approach works when the proxy model has good alignment 
-        # i.e. most augmentations of an example have embeddings that are similar to the embeddings of the other examples)
-        if self.num_augmentations == 1:
-            if self.verbose:
-                print("num_augmentations = 1, computing pairwise distance using embeddings, assuming dataset[i][0] gives ith original example not augmentation.")
-            Z = self.encode_augmented_trainset()
-            for latent_class in self.partition.keys():
-                Z_partition = torch.cat(
-                    [Z[[i + len(self.partition[latent_class]) * pos_num for i in self.partition[latent_class]]] 
-                     for pos_num in range(num_positives)]
-                )
-                pairwise_distance = SASSubsetDataset.pairwise_distance(Z_partition, Z_partition)
-                augmentation_distance[latent_class] += pairwise_distance
-            return augmentation_distance
-
-        for _ in tqdm(range(num_runs), desc="Approximating augmentation distance", disable = not self.verbose):
-            Z = self.encode_augmented_trainset(num_positives=num_positives)
-            for latent_class in self.partition.keys():
-                Z_partition = torch.cat(
-                    [Z[[i + len(self.partition[latent_class]) * pos_num for i in self.partition[latent_class]]] 
-                     for pos_num in range(num_positives)]
-                )
-                pairwise_distance = SASSubsetDataset.pairwise_distance(Z_partition, Z_partition)
-                len_partition = len(self.partition[latent_class])
-                for i in range(num_positives):
-                    rows = range(len_partition * i, len_partition * (i + 1))
-                    for j in range(i + 1, num_positives):
-                        cols = range(len_partition * j, len_partition * (j + 1))
-                        augmentation_distance[latent_class] += pairwise_distance[np.ix_(rows, cols)] / (num_positives * (num_positives - 1))
-
+            Z_partition = Z[self.partition[latent_class]]
+            pairwise_distance = SASSubsetDataset.pairwise_distance(Z_partition, Z_partition)
+            augmentation_distance[latent_class] = pairwise_distance.copy()
         return augmentation_distance
 
     def encode_trainset(self):
         trainloader = torch.utils.data.DataLoader(self.dataset, batch_size=self.pairwise_distance_block_size, shuffle=False, num_workers=2, pin_memory=True)
         with torch.no_grad():
             Z = []
-            for input in enumerate(trainloader):
+            for input in trainloader:
                 Z.append(self.proxy_model(input[0].to(self.device)))
-        return Z
+        return torch.cat(Z, dim=0)
     
     def encode_augmented_trainset(self, num_positives=1):
         trainloader = torch.utils.data.DataLoader(self.dataset, batch_size=self.pairwise_distance_block_size, shuffle=False, num_workers=2, pin_memory=True)
         with torch.no_grad():
-            Z = [[]] * num_positives
-            for input in trainloader:
-                for i in range(num_positives):
-                    Z[i].append(self.proxy_model(input[i].to(self.device)))
+            Z = []
+            for _ in range(num_positives):
+                Z.append([])
+            for X in trainloader:
+                for j in range(num_positives):
+                    Z[j].append(self.proxy_model(X[j].to(self.device)))
         for i in range(num_positives):
             Z[i] = torch.cat(Z[i], dim=0)
         Z = torch.cat(Z, dim=0)
@@ -296,5 +268,3 @@ class SASSubsetDataset(BaseSubsetDataset):
         similarity_matrix = np.block(similarity_matrices)
 
         return similarity_matrix
-
-

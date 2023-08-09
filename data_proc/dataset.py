@@ -24,9 +24,9 @@ class CIFAR10Augment(torchvision.datasets.CIFAR10):
             index (int): Index
 
         Returns:
-            tuple: (image, target) where target is index of the target class.
+            List of augmented views of element at index
         """
-        img, _ = self.data[index], self.targets[index]
+        img = self.data[index]
         pil_img = Image.fromarray(img)
         imgs = []
         for _ in range(self.n_augmentations):
@@ -57,10 +57,7 @@ class STL10Augment(torchvision.datasets.STL10):
         Returns:
             tuple: (image, target) where target is index of the target class.
         """
-        if self.labels is not None:
-            img, _ = self.data[index], int(self.labels[index])
-        else:
-            img = self.data[index]
+        img = self.data[index]
 
         # doing this so that it is consistent with all other datasets
         # to return a PIL Image

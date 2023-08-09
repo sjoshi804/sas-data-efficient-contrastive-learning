@@ -13,19 +13,25 @@ Self-supervised learning (SSL) learns high-quality representations from large po
 Please cite this if you use this code / paper in your work.
 
 ```bibtex
-@misc{joshi2023dataefficient,
-      title={Data-Efficient Contrastive Self-supervised Learning: Easy Examples Contribute the Most}, 
-      author={Siddharth Joshi and Baharan Mirzasoleiman},
-      year={2023},
-      eprint={2302.09195},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG}
+@InProceedings{pmlr-v202-joshi23b,
+  title = {Data-Efficient Contrastive Self-supervised Learning: Most Beneficial Examples for Supervised Learning Contribute the Least},
+  author = {Joshi, Siddharth and Mirzasoleiman, Baharan},
+  booktitle = {Proceedings of the 40th International Conference on Machine Learning},
+  pages = {15356--15370},
+  year = {2023},
+  editor = {Krause, Andreas and Brunskill, Emma and Cho, Kyunghyun and Engelhardt, Barbara and Sabato, Sivan and Scarlett, Jonathan},
+  volume = {202},
+  series = {Proceedings of Machine Learning Research},
+  month = {23--29 Jul},
+  publisher = {PMLR},
+  pdf = {https://proceedings.mlr.press/v202/joshi23b/joshi23b.pdf},
+  url = {https://proceedings.mlr.press/v202/joshi23b.html},
 }
 ```
 
 ## Examples
 
-Example subsets can be found in /examples
+Example subsets can be found in `/examples`
 
 Subsets Provided:
 
@@ -48,6 +54,7 @@ And then pass this to CustomSubsetDataset as the subset indices argument to get 
 
 ## Sample Usage
 
+See `cifar100_example_subset_creation.ipynb` for a complete example of how to create a subset with proxy models provided. 
 
 ```bash
 pip install sas-pip/
@@ -81,13 +88,12 @@ partition = clip_approx(
 # Get Subset
 proxy_model = torch.load(f"cifar100-proxy-encoder.pt").module.to(device)
 subset_dataset = SASSubsetDataset(
-    dataset=CIFAR100Biaugment("/data/cifar100", transform=transforms.ToTensor()), 
+    dataset=cifar100,
     subset_fraction=0.2,
     num_downstream_classes=100,
     device=device,
     proxy_model=proxy_model,
     approx_latent_class_partition=partition,
-    num_augmentations=10,
     verbose=True
 )
 ```

@@ -104,7 +104,7 @@ def main(rank: int, world_size: int, args):
     trainloader = torch.utils.data.DataLoader(
         dataset=trainset,
         batch_size=args.batch_size,
-        shuffle=False,
+        shuffle=(not args.distributed),
         sampler=DistributedSampler(trainset, shuffle=True, num_replicas=world_size, rank=rank, drop_last=True) if args.distributed else None,
         num_workers=4,
         pin_memory=True,
@@ -168,7 +168,7 @@ def main(rank: int, world_size: int, args):
                 step=epoch
             )
 
-        if (not args.distributed or rank == 0) and ((epoch + 1) % args.test_freq == 0):
+        if (args.test_freq > 0) and (not args.distributed or rank == 0) and ((epoch + 1) % args.test_freq == 0):
             test_acc = trainer.test()
             print(f"test_acc: {test_acc}")
             wandb.log(
@@ -179,7 +179,7 @@ def main(rank: int, world_size: int, args):
             )
 
         # Checkpoint Model
-        if ((not args.distributed or rank == 0) and (epoch + 1) % args.checkpoint_freq == 0):
+        if (args.checkpoint_freq > 0) and ((not args.distributed or rank == 0) and (epoch + 1) % args.checkpoint_freq == 0):
             trainer.save_checkpoint(prefix=f"{DT_STRING}-{args.dataset}-{args.arch}-{epoch}")
 
     if not args.distributed or rank == 0:
@@ -219,7 +219,7 @@ if __name__ == "__main__":
                         choices=[x.value for x in SupportedDatasets])
     parser.add_argument('--subset-indices', type=str, default="", help="Path to subset indices")
     parser.add_argument('--random-subset', action="store_true", help="Random subset")
-    parser.add_argument('--subset_fraction', type=float, )
+    parser.add_argument('--subset-fraction', type=float, help="Size of Subset as fraction (only needed for random subset)")
     parser.add_argument('--device', type=int, default=-1, help="GPU number to use")
     parser.add_argument("--device-ids", nargs = "+", default = None, help = "Specify device ids if using multiple gpus")
     parser.add_argument('--port', type=int, default=random.randint(49152, 65535), help="free port to use")

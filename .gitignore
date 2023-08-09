@@ -3,3 +3,5 @@ sas.egg-info
 build
 wandb
 *.pt
+imagenet-subset
+*.pkl
