@@ -214,7 +214,7 @@ if __name__ == "__main__":
     parser.add_argument("--test-freq", type=int, default=10, help='Frequency to fit a linear clf with L-BFGS for testing'
                                                                 'Not appropriate for large datasets. Set 0 to avoid '
                                                                 'classifier only training here.')
-    parser.add_argument("--checkpoint-freq", type=int, default=10000, help="How often to checkpoint model")
+    parser.add_argument("--checkpoint-freq", type=int, default=400, help="How often to checkpoint model")
     parser.add_argument('--dataset', type=str, default=str(SupportedDatasets.CIFAR100.value), help='dataset',
                         choices=[x.value for x in SupportedDatasets])
     parser.add_argument('--subset-indices', type=str, default="", help="Path to subset indices")
