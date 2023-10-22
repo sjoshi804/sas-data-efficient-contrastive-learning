@@ -131,7 +131,7 @@ def get_datasets(dataset: str, augment_clf_train=False, add_indices_to_data=Fals
     elif dataset == SupportedDatasets.TINY_IMAGENET.value:
         if add_indices_to_data:
             raise NotImplementedError("Not implemented for TinyImageNet")
-        trainset = ImageFolderAugment(root=f"{root}train/", transform=transform_train, num_positive=num_positive)  
+        trainset = ImageFolderAugment(root=f"{root}train/", transform=transform_train, n_augmentations=num_positive)  
         clftrainset = ImageFolder(root=f"{root}train/", transform=transform_clftrain)      
         testset = ImageFolder(root=f"{root}test/", transform=transform_train)    
         num_classes = 200
