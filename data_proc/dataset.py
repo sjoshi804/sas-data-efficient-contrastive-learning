@@ -1,5 +1,5 @@
 import os
-from typing import Callable
+from typing import Any, Callable, Optional
 
 import numpy as np
 import pandas as pd
@@ -92,6 +92,13 @@ class CIFAR100Augment(CIFAR10Augment):
 
 
 class ImageFolderAugment(ImageFolder):
+    def __init__(self, root: str, transform=Callable, n_augmentations: int = 2):
+        super().__init__(
+            root=root,
+            transform=transform,
+        )
+        self.n_augmentations = n_augmentations
+        
     def __getitem__(self, index):
         """
         Args:
