@@ -172,3 +172,7 @@ class CIFAR100Augment(torchvision.datasets.CIFAR100):
             imgs.append(self.transform(pil_img))
         return imgs
 ```
+
+# Downloading TinyImageNet
+
+Follow the steps here to correctly download and format TinyImageNet: https://github.com/tjmoon0104/pytorch-tiny-imagenet/
