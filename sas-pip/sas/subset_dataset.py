@@ -223,9 +223,9 @@ class SASSubsetDataset(BaseSubsetDataset):
         # Initialize augmentation distance with all 0s
         augmentation_distance = {}
         Z = self.encode_trainset()
-        for latent_class in self.partition.keys():
+        for latent_class in tqdm(list(self.partition.keys()), desc="Computing augmentation distance", disable=not(self.verbose)):
             Z_partition = Z[self.partition[latent_class]]
-            pairwise_distance = SASSubsetDataset.pairwise_distance(Z_partition, Z_partition)
+            pairwise_distance = SASSubsetDataset.pairwise_distance(Z_partition, Z_partition, verbose=self.verbose)
             augmentation_distance[latent_class] = pairwise_distance.copy()
         return augmentation_distance
 
@@ -233,7 +233,7 @@ class SASSubsetDataset(BaseSubsetDataset):
         trainloader = torch.utils.data.DataLoader(self.dataset, batch_size=self.pairwise_distance_block_size, shuffle=False, num_workers=2, pin_memory=True)
         with torch.no_grad():
             Z = []
-            for input in trainloader:
+            for input in  tqdm(trainloader, desc="Encoding trainset", disable=not(self.verbose)):
                 Z.append(self.proxy_model(input[0].to(self.device)))
         return torch.cat(Z, dim=0)
     
@@ -243,7 +243,7 @@ class SASSubsetDataset(BaseSubsetDataset):
             Z = []
             for _ in range(num_positives):
                 Z.append([])
-            for X in trainloader:
+            for X in tqdm(trainloader, desc="Encoding augmented trainset", disable=not(self.verbose)):
                 for j in range(num_positives):
                     Z[j].append(self.proxy_model(X[j].to(self.device)))
         for i in range(num_positives):
@@ -252,9 +252,9 @@ class SASSubsetDataset(BaseSubsetDataset):
         return Z
 
     @staticmethod
-    def pairwise_distance(Z1: torch.tensor, Z2: torch.tensor, block_size: int = 1024):
+    def pairwise_distance(Z1: torch.tensor, Z2: torch.tensor, block_size: int = 1024, verbose=False):
         similarity_matrices = []
-        for i in range(Z1.shape[0] // block_size + 1):
+        for i in tqdm(range(Z1.shape[0] // block_size + 1), desc="Computing pairwise distances", disable=not(verbose)):
             similarity_matrices_i = []
             e = Z1[i*block_size:(i+1)*block_size]
             for j in range(Z2.shape[0] // block_size + 1):
