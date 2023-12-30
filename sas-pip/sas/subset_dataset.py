@@ -12,6 +12,39 @@ from torch.utils.data import Dataset
 from sas.submodular_maximization import lazy_greedy
 from tqdm import tqdm
 
+# Efficient alternate implementation of np.block
+def efficient_block(mat_list:List[List[np.ndarray]]):
+    if type(mat_list[0]) is not list:
+        mat_list = [mat_list]
+
+    x_size = 0
+    y_size = 0
+
+    for i in mat_list[0]:
+        x_size += i.shape[1]
+
+    for j in range(len(mat_list)):
+        y_size += mat_list[j][0].shape[0]
+
+    output_data = np.zeros((y_size, x_size))
+
+    x_cursor = 0
+    y_cursor = 0
+
+    for mat_row in mat_list:
+        y_offset = 0
+
+        for matrix_ in mat_row:
+            shape_ = matrix_.shape
+            output_data[y_cursor: y_cursor + shape_[0], x_cursor: x_cursor + shape_[1]] = matrix_
+            x_cursor += shape_[1]
+            y_offset = shape_[0]
+
+        y_cursor += y_offset
+        x_cursor = 0
+
+    return output_data
+
 """
 Base Subset Dataset (Abstract Base Class)
 """
@@ -66,6 +99,7 @@ class RandomSubsetDataset(BaseSubsetDataset):
         self,
         dataset: Dataset,
         subset_fraction: float,
+        partition: Optional[Dict[int, List[int]]] = None,
         verbose: bool = False
     ):
         """
@@ -81,7 +115,16 @@ class RandomSubsetDataset(BaseSubsetDataset):
             subset_fraction=subset_fraction,
             verbose=verbose
         )
-        self.subset_indices = random.sample(range(self.len_dataset), self.subset_size)
+        
+        self.subset_indices = []
+        if partition is not None:
+            if self.verbose:
+                print("Partition provided => returning balanced random subset from all latent classes")
+            self.subset_indices = RandomSubsetDataset.get_random_balanced_indices(partition, subset_fraction)
+        else:   
+            if self.verbose:
+                print("No partition => random subset from full data")
+            self.subset_indices = random.sample(range(self.len_dataset), self.subset_size)
         self.initialization_complete()
         
     def __len__(self):
@@ -95,6 +138,33 @@ class RandomSubsetDataset(BaseSubsetDataset):
         original_item = self.dataset[original_index]
         
         return original_item
+    
+    @staticmethod
+    def get_random_balanced_indices(partition: Dict[int, List[int]], subset_fraction: float):
+        """
+        Randomly selects a subset of fractional size = 'subset_fraction' from each latent class in partition.
+        The subset selected from each list is the same fraction of the whole.
+
+        Parameters:
+        - partition: Dict[int, List[int]]
+        - subset_fraction: float
+
+        Returns:
+        - selected_subset: List containing the selected subset.
+        """
+        
+        def random_subset_with_fixed_size(original_list, subset_size):
+            subset_size = min(subset_size, len(original_list))
+            return random.sample(original_list, subset_size)
+
+        selected_subset = []
+
+        for key in partition.keys():
+            subset_size = int(len(partition[key]) * subset_fraction)
+            subset = random_subset_with_fixed_size(partition[key], subset_size)
+            selected_subset.extend(subset)
+
+        return selected_subset
 
 """
 Custom Subset
@@ -130,7 +200,7 @@ class CustomSubsetDataset(BaseSubsetDataset):
 Subsets that maximize Augmentation Similarity Subset Dataset
 """
 class SubsetSelectionObjective:
-    def __init__(self, distance, threshold=0):
+    def __init__(self, distance, threshold=0, verbose=False):
         '''
         :param distance: (n, n) matrix specifying pairwise augmentation distance
         :type distance: np.array
@@ -139,9 +209,14 @@ class SubsetSelectionObjective:
         '''
         self.distance = distance 
         self.threshold = threshold
+        self.verbose = verbose
+        if self.verbose:
+            print("Masking pairwise distance matrix")
+        for i in range(len(self.distance)):        
+            self.distance[i] *= (self.distance[i] >= self.threshold)
 
     def inc(self, sset, i):
-        return np.sum(self.distance[i] * (self.distance[i] >= self.threshold)) - np.sum(self.distance[np.ix_(sset, [i])])
+        return np.sum(self.distance[i]) - np.sum(self.distance[np.ix_(sset, [i])])
     
     def add(self, i):
         self.distance[:][i] = 0
@@ -199,16 +274,18 @@ class SASSubsetDataset(BaseSubsetDataset):
         self.augmentation_distance = augmentation_distance
         self.num_runs = num_runs
         self.pairwise_distance_block_size = pairwise_distance_block_size
-
+        print("Here1")
         if self.augmentation_distance == None:
             self.augmentation_distance = self.approximate_augmentation_distance()
 
+        print("Here2")
         class_wise_idx = {}
-        for latent_class in tqdm(self.partition.keys(), desc="Subset Selection:", disable=not verbose):
-            F = SubsetSelectionObjective(self.augmentation_distance[latent_class].copy(), threshold=threshold)
-            class_wise_idx[latent_class] = lazy_greedy(F, range(len(self.augmentation_distance[latent_class])), len(self.augmentation_distance[latent_class]))
+        for latent_class in tqdm(self.partition.keys(), desc="Subset Selection", disable=not verbose):
+            F = SubsetSelectionObjective(self.augmentation_distance[latent_class].copy(), threshold=threshold, verbose=self.verbose)
+            class_wise_idx[latent_class] = lazy_greedy(F, range(len(self.augmentation_distance[latent_class])), len(self.augmentation_distance[latent_class]), verbose=self.verbose)
             class_wise_idx[latent_class] = [self.partition[latent_class][i] for i in class_wise_idx[latent_class]]
-            
+        
+        print("Here3")
         self.subset_indices = []
         for latent_class in class_wise_idx.keys():
             l = len(class_wise_idx[latent_class])
@@ -265,6 +342,6 @@ class SASSubsetDataset(BaseSubsetDataset):
                     )
                 )
             similarity_matrices.append(similarity_matrices_i)
-        similarity_matrix = np.block(similarity_matrices)
+        similarity_matrix = efficient_block(similarity_matrices)
 
         return similarity_matrix

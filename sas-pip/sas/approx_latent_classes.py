@@ -83,6 +83,10 @@ def kmeans_approx(
         for input in tqdm(loader, "Encoding data using proxy model provided", disable=not verbose):
             Z.append(proxy_model(input[0].to(device)))
     Z = torch.cat(Z, dim=0).to("cpu")
+    
+    if verbose:
+        print(f"KMeans: clustering into {num_classes} clusters.")
+        
     kmeans = KMeans(n_clusters=num_classes, mode='euclidean', verbose=int(verbose), max_iter=1000)
     preds = kmeans.fit_predict(Z).cpu().numpy()
     return partition_from_preds(preds)

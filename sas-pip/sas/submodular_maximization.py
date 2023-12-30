@@ -1,4 +1,6 @@
-import heapq 
+import heapq
+
+from tqdm import tqdm 
 
 def _heappush_max(heap, item):
     heap.append(item)
@@ -14,7 +16,7 @@ def _heappop_max(heap):
         return returnitem
     return lastelt
 
-def lazy_greedy(F, V, B):
+def lazy_greedy(F, V, B, verbose=False):
     """
     Args
     - F: Submodular Objective
@@ -27,20 +29,26 @@ def lazy_greedy(F, V, B):
     heapq._heapify_max(order)
     [_heappush_max(order, (F.inc(sset, index), index)) for index in V]
 
-    while order and len(sset) < B:
-        el = _heappop_max(order)
-        improv = F.inc(sset, el[1])
+    if verbose:
+        print("Starting lazy greedy selection")
+        
+    with tqdm(total=B, disable=not verbose) as pbar:
+        while order and len(sset) < B:
+            el = _heappop_max(order)
+            improv = F.inc(sset, el[1])
 
-        #if improv >= 0:
-        if not order:
-            sset.append(el[1])
-            F.add(el[1])
-        else:
-            top = _heappop_max(order)
-            if improv >= top[0]:
+            #if improv >= 0:
+            if not order:
                 sset.append(el[1])
                 F.add(el[1])
+                pbar.update(1)
             else:
-                _heappush_max(order, (improv, el[1]))
-            _heappush_max(order, top)
+                top = _heappop_max(order)
+                if improv >= top[0]:
+                    sset.append(el[1])
+                    F.add(el[1])
+                    pbar.update(1)
+                else:
+                    _heappush_max(order, (improv, el[1]))
+                _heappush_max(order, top)
     return sset
